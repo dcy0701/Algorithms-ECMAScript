@@ -1,9 +1,13 @@
 let noop = () => {};
 
+
+
 class Promise {
     constructor (fn) {
         this.next = [];
         this.status = 'pending';
+
+        this.result = '';
 
         let runNextResolve = function (data) {
             this.next.forEach(promise => {
@@ -20,7 +24,11 @@ class Promise {
                     resolve.call(promise, result);
                 }
             });
+
+            this.next = [];
         };
+
+        this._innerRunNextResolve = runNextResolve;
 
         let runNextReject = function (err)  {
             this.next.forEach(promise => {
@@ -42,14 +50,18 @@ class Promise {
                     resolve.call(promise, result);
                 }
             });
+
+            this.next = [];
         };
+
+        this._innerRunNextReject = runNextReject;
 
         let resolve = function (data) {
             if (this.status !== 'pending') {
                 return;
             }
-            this.status = 'fullfilled';
-            this.resMsg = data;
+            this.status = 'fulfilled';
+            this.result = data;
             runNextResolve.call(this, data);
         };
 
@@ -58,7 +70,7 @@ class Promise {
                 return;
             }
             this.status = 'rejected';
-            this.errMsg = err;
+            this.result = err;
 
             runNextReject.call(this, err);
         };
@@ -77,6 +89,17 @@ class Promise {
         errorHandle && (p.errorHandle = errorHandle);
 
         this.next.push(p);
+
+        if (this.status === 'fulfilled') {
+            setTimeout(() => {
+                this._innerRunNextResolve.call(this, this.result);
+            });
+        } else if (this.status === 'rejected') {
+            setTimeout(() => {
+                this._innerRunNextReject.call(this, this.result);
+            });
+        }
+
         return p;
     }
 
@@ -96,17 +119,21 @@ class Promise {
         // 成功返回一个promise.resolve
     }
 
-    static reject () {
+    static reject (reason) {
         return new Promise((resolve, reject) => {
-            reject()
+            reject(reason)
         })
     }
 
-    static resolve () {
+    static resolve (data) {
         return new Promise((resolve, reject) => {
-            resolve()
+            resolve(data)
         })
     }
 }
 // test
-Promise.resolve().then(console.log(123)).then(console.log(234))
+
+
+let test = Promise.resolve().then(() => console.log('test'));
+
+test.then(() => console.log(123))
