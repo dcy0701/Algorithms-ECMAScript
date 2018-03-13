@@ -24,13 +24,18 @@ class Promise {
 
         let runNextReject = function (err)  {
             this.next.forEach(promise => {
-                let handle = promise.errorHandle || noop;
+                let handle = promise.errorHandle;
                 let result;
 
-                try {
-                    result = handle(err);
-                } catch (e) {
-                    reject.call(promise, e);
+                // 错误向后冒泡
+                if (handle) {
+                    try {
+                        result = handle(err);
+                    } catch (e) {
+                        return reject.call(promise, e);
+                    }
+                } else {
+                    return reject.call(promise, err);
                 }
 
                 if (!result || !result.then) {
@@ -75,12 +80,20 @@ class Promise {
         return p;
     }
 
-    static all () {
+    catch (errorHandle) {
+        let p = new this.constructor(noop);
+        errorHandle && (p.errorHandle = errorHandle);
 
+        this.next.push(p);
+        return p;
+    }
+
+    static all () {
+        // 加个计数器，每次成功+1
     }
 
     static race () {
-
+        // 成功返回一个promise.resolve
     }
 
     static reject () {
